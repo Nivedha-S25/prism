@@ -22,6 +22,7 @@ returns a score.
 from __future__ import annotations
 
 import logging
+import threading
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
@@ -87,6 +88,10 @@ class FaceFeatureExtractor:
 
     def __init__(self) -> None:
         self._mesh = None
+        # MediaPipe FaceMesh keeps internal state and is not thread-safe, so a
+        # single extractor shared across threads (e.g. concurrent API requests)
+        # must serialise access to both construction and `process`.
+        self._lock = threading.Lock()
 
     @property
     def available(self) -> bool:
@@ -100,12 +105,14 @@ class FaceFeatureExtractor:
         if self._mesh is None:
             import mediapipe as mp
 
-            self._mesh = mp.solutions.face_mesh.FaceMesh(
-                static_image_mode=True,
-                max_num_faces=1,
-                refine_landmarks=True,
-                min_detection_confidence=0.5,
-            )
+            with self._lock:
+                if self._mesh is None:
+                    self._mesh = mp.solutions.face_mesh.FaceMesh(
+                        static_image_mode=True,
+                        max_num_faces=1,
+                        refine_landmarks=True,
+                        min_detection_confidence=0.5,
+                    )
         return self._mesh
 
     def extract(self, frame: np.ndarray) -> FrameFeatures:
@@ -121,7 +128,8 @@ class FaceFeatureExtractor:
 
         mesh = self._ensure_mesh()
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        result = mesh.process(rgb)
+        with self._lock:
+            result = mesh.process(rgb)
         if not result.multi_face_landmarks:
             return FrameFeatures(0.0, 1.0, 0.3, 0.0, 0.0, 0.0)
 
