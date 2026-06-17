@@ -1,0 +1,29 @@
+# ---- Core runtime ----
+fastapi>=0.110.0
+uvicorn[standard]>=0.29.0
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+python-multipart>=0.0.9
+numpy>=1.26.0
+
+# ---- Module 1: Behavioral (Audio + LLM) ----
+openai-whisper>=20231117        # OpenAI Whisper speech-to-text
+google-generativeai>=0.5.0      # Google Gemini LLM evaluation wrapper
+
+# ---- Module 2: Personality (NLP / BERT) ----
+torch>=2.2.0
+transformers>=4.40.0
+tokenizers>=0.19.0
+
+# ---- Module 3: Stress / Vision ----
+opencv-python>=4.9.0
+mediapipe>=0.10.11
+
+# ---- Evaluation ----
+scikit-learn>=1.4.0
+
+# ---- Dev / tooling ----
+ruff>=0.4.0
+mypy>=1.10.0
+pytest>=8.0.0
+httpx>=0.27.0
