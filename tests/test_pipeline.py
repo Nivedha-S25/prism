@@ -32,6 +32,22 @@ def test_pas_weights_configurable() -> None:
     assert 0.0 <= result.pas <= 100.0
 
 
+def test_pas_spans_full_range_and_rewards_low_neuroticism() -> None:
+    analyzer = PersonalityAnalyzer()
+    ideal = {"openness": 1.0, "conscientiousness": 1.0, "extraversion": 1.0,
+             "agreeableness": 1.0, "neuroticism": 0.0}
+    worst = {"openness": 0.0, "conscientiousness": 0.0, "extraversion": 0.0,
+             "agreeableness": 0.0, "neuroticism": 1.0}
+    # Default weights all 1 -> ideal OCEAN reaches the full 100, worst reaches 0.
+    assert analyzer.compute_pas(ideal) == 100.0
+    assert analyzer.compute_pas(worst) == 0.0
+    # High neuroticism must lower PAS relative to low neuroticism (all else equal).
+    base = {"openness": 0.5, "conscientiousness": 0.5, "extraversion": 0.5,
+            "agreeableness": 0.5, "neuroticism": 0.0}
+    high_n = {**base, "neuroticism": 1.0}
+    assert analyzer.compute_pas(high_n) < analyzer.compute_pas(base)
+
+
 def test_vision_score_range() -> None:
     rng = np.random.default_rng(0)
     frames = [rng.integers(0, 255, (240, 320, 3), dtype=np.uint8) for _ in range(15)]

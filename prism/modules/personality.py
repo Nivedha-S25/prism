@@ -203,7 +203,11 @@ class PersonalityTrainer:
                 preds = model(
                     input_ids=batch["input_ids"].to(self.device),
                     attention_mask=batch["attention_mask"].to(self.device),
-                    token_type_ids=batch.get("token_type_ids", None),
+                    token_type_ids=(
+                        batch["token_type_ids"].to(self.device)
+                        if "token_type_ids" in batch
+                        else None
+                    ),
                 )
                 loss = loss_fn(preds, batch["labels"].to(self.device).float())
                 loss.backward()
@@ -286,14 +290,20 @@ class PersonalityAnalyzer:
         return traits
 
     def compute_pas(self, traits: dict[str, float]) -> float:
-        """Weighted Personality Alignment Score on a 0-100 scale."""
+        """Weighted Personality Alignment Score on a 0-100 scale.
+
+        Neuroticism is a negative indicator, so its *inverse* ``(1 - N)`` is
+        rewarded. Keeping ``(1 - N)`` (rather than subtracting ``N``) means the
+        neuroticism weight stays meaningful in ``w.total`` and the score can
+        span the full 0-100 range: all traits ideal (O=C=E=A=1, N=0) -> 100.
+        """
         w = self.weights
         numerator = (
             w.w_openness * traits[Trait.OPENNESS.value]
             + w.w_conscientiousness * traits[Trait.CONSCIENTIOUSNESS.value]
             + w.w_extraversion * traits[Trait.EXTRAVERSION.value]
             + w.w_agreeableness * traits[Trait.AGREEABLENESS.value]
-            - w.w_neuroticism * traits[Trait.NEUROTICISM.value]
+            + w.w_neuroticism * (1.0 - traits[Trait.NEUROTICISM.value])
         )
         pas = (numerator / w.total) * 100.0 if w.total else 0.0
         return float(max(0.0, min(100.0, pas)))
